@@ -3,7 +3,7 @@ import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 from fpdf import FPDF
 import os
-import io
+import tempfile
 
 # === CONFIGURATION ===
 CARTE_LARGEUR, CARTE_HAUTEUR = 600, 350
@@ -51,12 +51,15 @@ if excel_file and photos:
 
         carte = creer_carte(nom, prenom, matricule, photo_file)
 
-        buf = io.BytesIO()
-        carte.save(buf, format="JPEG")
-        buf.seek(0)
-        pdf.add_page()
-        pdf.image(buf, x=0, y=0, w=CARTE_LARGEUR, h=CARTE_HAUTEUR)
+        # Sauvegarder l'image temporairement pour fpdf
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmpfile:
+            carte.save(tmpfile.name, format="JPEG")
+            pdf.add_page()
+            pdf.image(tmpfile.name, x=0, y=0, w=CARTE_LARGEUR, h=CARTE_HAUTEUR)
 
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
-    st.success("✅ PDF généré avec succès !")
-    st.download_button("📥 Télécharger le PDF", data=pdf_bytes, file_name="cartes_etudiants.pdf")
+    # Générer le PDF en mémoire
+    output_path = "cartes_etudiants.pdf"
+    pdf.output(output_path)
+    with open(output_path, "rb") as f:
+        st.success("✅ PDF généré avec succès !")
+        st.download_button("📥 Télécharger le PDF", data=f, file_name=output_path)
